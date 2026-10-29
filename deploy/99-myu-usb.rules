@@ -1,0 +1,18 @@
+# /etc/udev/rules.d/99-myu-usb.rules
+# Backup-my-U：U 盘插入时触发 myu-backup.service（具体是哪块盘由程序识别）
+#
+# 安装：本文件由 deploy/install.sh 复制到 /etc/udev/rules.d/ 并把 __SERIAL__
+# 替换为真实 ID_SERIAL；手工安装时需要自己替换。
+# 为什么用 SYSTEMD_WANTS 而不是 RUN+=：udev 在事件处理结束后会杀掉 RUN 启动的
+# 子进程，像备份这样的长任务必须交给 systemd 服务去跑。
+# 触发条件：add 事件 + 块设备 + 有文件系统（ENV{ID_FS_TYPE} 非空）+ 序列号匹配。
+# 只有带文件系统的节点（通常是分区）才有 ID_FS_TYPE，整盘节点不会被触发。
+# 若安装时选择跳过序列号，install.sh 会注释掉下面这条精确规则、放开降级规则。
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_TYPE}!="", ENV{ID_SERIAL}=="__SERIAL__", TAG+="systemd", ENV{SYSTEMD_WANTS}+="myu-backup.service"
+
+# 降级规则（仅当安装时跳过序列号才由 install.sh 放开）：不比对序列号，任何带
+# 文件系统的 USB 移动块设备都会触发。
+# 降级风险：插任何 U 盘 / 移动硬盘 / 读卡器都会启动一次备份服务。程序仍会按
+# config.ini 的 serial 或标记文件做二次过滤，多数情况以退出码 3 结束（属正常），
+# 但会多出一次进程启动与日志；若同时插了两块盘，也可能触发一次本不想跑的备份。
+#ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_TYPE}!="", ENV{ID_BUS}=="usb", TAG+="systemd", ENV{SYSTEMD_WANTS}+="myu-backup.service"

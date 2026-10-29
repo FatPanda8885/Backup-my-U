@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.myu-tmp
+dist/
+build/

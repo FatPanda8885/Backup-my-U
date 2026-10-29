@@ -1,0 +1,8 @@
+* text=auto eol=lf
+deploy/*.sh text eol=lf
+deploy/*.service text eol=lf
+deploy/*.timer text eol=lf
+deploy/*.rules text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.ini text eol=lf

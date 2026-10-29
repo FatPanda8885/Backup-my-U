@@ -1,0 +1,14 @@
+# Backup-my-U 轮询定时器（每分钟触发 myu-poll.service）
+# 安装位置：/etc/systemd/system/myu-poll.timer
+[Unit]
+Description=每分钟触发 Backup-my-U 轮询兜底
+
+[Timer]
+# 每分钟整点触发（等价于 OnCalendar=*-*-* *:*:00）
+OnCalendar=*-*-* *:*:00
+# 收敛触发时刻，避免 systemd 把触发推迟到整分钟之后很久
+AccuracySec=10s
+Unit=myu-poll.service
+
+[Install]
+WantedBy=timers.target

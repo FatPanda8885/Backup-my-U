@@ -1,0 +1,22 @@
+# Backup-my-U 轮询兜底服务（oneshot，由 myu-poll.timer 每分钟触发）
+# 安装位置：/etc/systemd/system/myu-poll.service
+#
+# 兜底场景：udev 事件丢失、安装时跳过了序列号匹配、或系统在插盘时没触发服务。
+# 找到目标 U 盘就备份，找不到就以 3 退出（属正常情况）。
+# ExecStart 带 --poll：config.ini 的 [general] poll_guard_seconds（默认 3600 秒）内
+# 已经有过一次运行就直接退出 0，只付一次 stat 的代价，不会每分钟全盘扫描。
+[Unit]
+Description=Backup-my-U 轮询兜底（每分钟）
+After=local-fs.target
+ConditionPathExists=/etc/myu/config.ini
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/myu backup --poll
+# 3 = 未找到目标 U 盘；75 = 已有实例在跑（与 udev 触发的备份撞车），均不算失败
+SuccessExitStatus=3 75
+RuntimeDirectory=myu
+RuntimeDirectoryMode=0755
+ProtectSystem=full
+PrivateTmp=yes
+NoNewPrivileges=yes

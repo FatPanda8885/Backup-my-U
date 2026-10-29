@@ -1,0 +1,32 @@
+# Backup-my-U 备份服务（普通 oneshot，由 udev 规则触发）
+# 安装位置：/etc/systemd/system/myu-backup.service
+#
+# 触发链路：U 盘插入 -> udev -> ENV{SYSTEMD_WANTS}="myu-backup.service" -> 本单元
+# 本单元是普通服务而不是 %i 模板单元：udev 只负责触发，具体是哪一块盘由程序
+# 调用 device.find_target 按 config.ini 的 serial / 标记文件自行识别。
+# 因此没有 [Install] 段，也不需要 systemctl enable。
+# 部署与排错说明见仓库内 docs/DEPLOY.md。
+[Unit]
+Description=Backup-my-U 备份（由 udev 触发）
+After=local-fs.target
+# 配置不存在时直接跳过，避免每分钟/每次插拔都留下失败记录
+ConditionPathExists=/etc/myu/config.ini
+
+[Service]
+Type=oneshot
+# udev 事件可能早于文件系统就绪，先等 3 秒让内核补全分区与文件系统信息；
+# 前置的 "-" 表示即使这条命令失败也不阻断后续 ExecStart。
+# 重复的多次事件由程序内的文件锁挡掉（第二个进程以 75 退出）。
+ExecStartPre=-/bin/sh -c 'sleep 3'
+ExecStart=/usr/local/bin/myu backup
+# 3 = 未找到目标 U 盘（插的是别的盘或盘已拔掉），属于正常情况
+# 75 = 已有实例在跑（程序内文件锁），重复触发不算失败
+SuccessExitStatus=3 75
+# 程序在 /run/myu 下创建 mnt/<dev> 并只读挂载 U 盘
+RuntimeDirectory=myu
+RuntimeDirectoryMode=0755
+# 加固：只读 /usr 与 /etc；不加 PrivateDevices / ProtectHome 之类的选项，
+# 因为本服务必须能读 /dev、写 /run/myu 并执行 mount/umount。
+ProtectSystem=full
+PrivateTmp=yes
+NoNewPrivileges=yes
